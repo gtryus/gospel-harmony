@@ -126,35 +126,45 @@ type HarmonyNumRow = {
  * in `endRef.book` contains `endRef`. Rows without that column still appear
  * when their `num` falls between those bounds. If nothing contains a pick,
  * that side falls back to the table edge (min or max `num`).
+ *
+ * A null start or end means no bound on that side (include from table min or
+ * through table max, respectively). Both null yields the full table range.
  */
 export function numRangeForVerseRefs(
   rows: HarmonyNumRow[],
-  startRef: VerseRef,
-  endRef: VerseRef,
+  startRef: VerseRef | null,
+  endRef: VerseRef | null,
 ): { lo: number; hi: number } {
   if (rows.length === 0) return { lo: 0, hi: 0 }
 
   const tableMin = Math.min(...rows.map((r) => r.num))
   const tableMax = Math.max(...rows.map((r) => r.num))
 
-  let startNum = tableMax
-  let foundStart = false
-  let endNum = tableMin
-  let foundEnd = false
-
-  for (const row of rows) {
-    if (verseRefContainedInCell(row, startRef)) {
-      foundStart = true
-      if (row.num < startNum) startNum = row.num
+  let startNum = tableMin
+  if (startRef !== null) {
+    startNum = tableMax
+    let foundStart = false
+    for (const row of rows) {
+      if (verseRefContainedInCell(row, startRef)) {
+        foundStart = true
+        if (row.num < startNum) startNum = row.num
+      }
     }
-    if (verseRefContainedInCell(row, endRef)) {
-      foundEnd = true
-      if (row.num > endNum) endNum = row.num
-    }
+    if (!foundStart) startNum = tableMin
   }
 
-  if (!foundStart) startNum = tableMin
-  if (!foundEnd) endNum = tableMax
+  let endNum = tableMax
+  if (endRef !== null) {
+    endNum = tableMin
+    let foundEnd = false
+    for (const row of rows) {
+      if (verseRefContainedInCell(row, endRef)) {
+        foundEnd = true
+        if (row.num > endNum) endNum = row.num
+      }
+    }
+    if (!foundEnd) endNum = tableMax
+  }
 
   const lo = Math.min(startNum, endNum)
   const hi = Math.max(startNum, endNum)
