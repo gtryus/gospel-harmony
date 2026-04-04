@@ -21,7 +21,7 @@ function levenshtein(a: string, b: string): number {
 }
 
 /**
- * Nearest-match filter on Event/Topic: substring matches rank best; otherwise
+ * Nearest-match filter on Event: substring matches rank best; otherwise
  * keep rows within a small band of the best Levenshtein distance.
  */
 export function filterRowsByTopic(
@@ -32,7 +32,7 @@ export function filterRowsByTopic(
   if (!q) return rows
   const ql = q.toLowerCase()
   const scored = rows.map((row) => {
-    const t = row['Event/Topic']
+    const t = row.Event
     const tl = t.toLowerCase()
     const d = tl.includes(ql) ? 0 : levenshtein(ql, tl)
     return { row, d }

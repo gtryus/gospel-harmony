@@ -100,6 +100,67 @@ export function rowCanonBounds(row: {
   return { min, max }
 }
 
+/** True if `ref` lies within the parsed passage in that row/column (same book). */
+export function verseRefContainedInCell(
+  row: { Matthew: string; Mark: string; Luke: string; John: string },
+  ref: VerseRef,
+): boolean {
+  const r = parseRefRange(ref.book, row[ref.book])
+  if (!r) return false
+  return (
+    compareVerseRef(r.start, ref) <= 0 && compareVerseRef(ref, r.end) <= 0
+  )
+}
+
+type HarmonyNumRow = {
+  num: number
+  Matthew: string
+  Mark: string
+  Luke: string
+  John: string
+}
+
+/**
+ * Map start/end verse picks to inclusive row `num` bounds: first row whose
+ * passage in `startRef.book` contains `startRef`, and last row whose passage
+ * in `endRef.book` contains `endRef`. Rows without that column still appear
+ * when their `num` falls between those bounds. If nothing contains a pick,
+ * that side falls back to the table edge (min or max `num`).
+ */
+export function numRangeForVerseRefs(
+  rows: HarmonyNumRow[],
+  startRef: VerseRef,
+  endRef: VerseRef,
+): { lo: number; hi: number } {
+  if (rows.length === 0) return { lo: 0, hi: 0 }
+
+  const tableMin = Math.min(...rows.map((r) => r.num))
+  const tableMax = Math.max(...rows.map((r) => r.num))
+
+  let startNum = tableMax
+  let foundStart = false
+  let endNum = tableMin
+  let foundEnd = false
+
+  for (const row of rows) {
+    if (verseRefContainedInCell(row, startRef)) {
+      foundStart = true
+      if (row.num < startNum) startNum = row.num
+    }
+    if (verseRefContainedInCell(row, endRef)) {
+      foundEnd = true
+      if (row.num > endNum) endNum = row.num
+    }
+  }
+
+  if (!foundStart) startNum = tableMin
+  if (!foundEnd) endNum = tableMax
+
+  const lo = Math.min(startNum, endNum)
+  const hi = Math.max(startNum, endNum)
+  return { lo, hi }
+}
+
 export function collectVerseRefOptions(
   rows: Array<{
     Matthew: string

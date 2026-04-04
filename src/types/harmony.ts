@@ -1,6 +1,6 @@
 export type HarmonyRow = {
   num: number
-  'Event/Topic': string
+  Event: string
   Matthew: string
   Mark: string
   Luke: string
@@ -8,7 +8,6 @@ export type HarmonyRow = {
 }
 
 export type HarmonyDataFile = {
-  source: string
   columns: string[]
   rows: HarmonyRow[]
 }

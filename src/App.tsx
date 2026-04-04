@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
@@ -14,9 +14,11 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import SearchIcon from '@mui/icons-material/Search'
 import SettingsIcon from '@mui/icons-material/Settings'
-import rawHarmony from './data/NLT_Harmony_of_the_Four_Gospels.json'
+import rawHarmony from './data/gospel-harmony-data.json'
 import type { HarmonyDataFile } from './types/harmony'
 import {
   type Gospel,
@@ -30,7 +32,7 @@ import {
   formatVerseRef,
   firstVerseOfBook,
   lastVerseOfBook,
-  rowCanonBounds,
+  numRangeForVerseRefs,
   verseRefsEqual,
 } from './utils/gospelRefs'
 import { filterRowsByTopic } from './utils/topicMatch'
@@ -86,7 +88,9 @@ function GospelCell(props: {
 }
 
 function App() {
+  const tableAnchorRef = useRef<HTMLDivElement>(null)
   const [topicQuery, setTopicQuery] = useState('')
+  const [appliedTopic, setAppliedTopic] = useState('')
   const verseOptions = useMemo(
     () => collectVerseRefOptions(ALL_ROWS),
     [],
@@ -95,6 +99,12 @@ function App() {
     ...BOOK_FIRST_VERSE.Matthew,
   }))
   const [endRef, setEndRef] = useState<VerseRef>(() => ({
+    ...BOOK_LAST_VERSE.John,
+  }))
+  const [appliedStartRef, setAppliedStartRef] = useState<VerseRef>(() => ({
+    ...BOOK_FIRST_VERSE.Matthew,
+  }))
+  const [appliedEndRef, setAppliedEndRef] = useState<VerseRef>(() => ({
     ...BOOK_LAST_VERSE.John,
   }))
   const [bibleVersion, setBibleVersion] = useState<BibleVersion>(readStoredVersion)
@@ -129,16 +139,16 @@ function App() {
   )
 
   const filteredRows = useMemo(() => {
-    const byTopic = filterRowsByTopic(ALL_ROWS, topicQuery)
-    return byTopic.filter((row) => {
-      const bounds = rowCanonBounds(row)
-      if (!bounds) return false
-      return (
-        compareVerseRef(bounds.max, startRef) >= 0 &&
-        compareVerseRef(bounds.min, endRef) <= 0
-      )
-    })
-  }, [topicQuery, startRef, endRef])
+    const { lo, hi } = numRangeForVerseRefs(
+      ALL_ROWS,
+      appliedStartRef,
+      appliedEndRef,
+    )
+    const inNumRange = ALL_ROWS.filter(
+      (row) => row.num >= lo && row.num <= hi,
+    )
+    return filterRowsByTopic(inNumRange, appliedTopic)
+  }, [appliedTopic, appliedStartRef, appliedEndRef])
 
   const persistVersion = useCallback((v: BibleVersion) => {
     setBibleVersion(v)
@@ -149,6 +159,18 @@ function App() {
     }
     setSettingsAnchor(null)
   }, [])
+
+  const handleSearchClick = useCallback(() => {
+    setAppliedTopic(topicQuery)
+    setAppliedStartRef({ ...startRef })
+    setAppliedEndRef({ ...endRef })
+    setTimeout(() => {
+      tableAnchorRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }, 0)
+  }, [topicQuery, startRef, endRef])
 
   return (
     <Box className="harmony-app" sx={{ py: 2, px: { xs: 1, sm: 2 } }}>
@@ -192,6 +214,16 @@ function App() {
           )}
           sx={{ minWidth: 220, flex: '1 1 200px' }}
         />
+        <Tooltip title="Apply topic and references to filter the table">
+          <IconButton
+            aria-label="Search with current topic and reference range"
+            onClick={handleSearchClick}
+            size="small"
+            color="primary"
+          >
+            <SearchIcon />
+          </IconButton>
+        </Tooltip>
         <Box sx={{ flex: '1 1 auto' }} />
         <IconButton
           aria-label="Bible translation"
@@ -221,7 +253,12 @@ function App() {
         ))}
       </Menu>
 
-      <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: '70vh' }}>
+      <TableContainer
+        ref={tableAnchorRef}
+        component={Paper}
+        variant="outlined"
+        sx={{ maxHeight: '70vh' }}
+      >
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
@@ -238,7 +275,7 @@ function App() {
             {filteredRows.map((row) => (
               <TableRow key={row.num} hover>
                 <TableCell>{row.num}</TableCell>
-                <TableCell>{row['Event/Topic']}</TableCell>
+                <TableCell>{row.Event}</TableCell>
                 {GOSPELS.map((book) => (
                   <TableCell key={book}>
                     <GospelCell
