@@ -370,6 +370,24 @@ function App() {
           No rows match the current filters.
         </Typography>
       )}
+
+      <Typography
+        component="footer"
+        variant="caption"
+        color="text.secondary"
+        sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider', display: 'block' }}
+      >
+        Holy Bible.{' '}
+        <Link
+          href="https://www.NLTStudyBible.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          underline="hover"
+        >
+          NLT Study Bible
+        </Link>
+        , copyright © 2008 by Tyndale House Foundation. pp. 1567-1571
+      </Typography>
     </Box>
   )
 }
